@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auditoría de Siniestros - Transfers</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen p-6 font-sans">
+  <div class="max-w-6xl mx-auto bg-white p-6 rounded-xl shadow-md">
+    
+    <!-- Encabezado -->
+    <div class="border-b pb-4 mb-6 flex justify-between items-center">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-800">🛠️ Auditoría de Siniestros 100%</h1>
+        <p class="text-slate-500 text-sm">Ingresa el código del Transfer Shipment (TS) para desglosar la carga.</p>
+      </div>
+      <span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full">Operación Inbound</span>
+    </div>
+
+    <!-- Formulario de Búsqueda -->
+    <div class="flex gap-4 mb-6">
+      <input type="text" id="tsInput" placeholder="Ej. MXYU01 o 24261346..." 
+        class="flex-1 border border-slate-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400">
+      <button onclick="consultarSiniestro()" id="btnBuscar"
+        class="bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold px-6 py-3 rounded-lg transition">
+        Buscar Carga
+      </button>
+    </div>
+
+    <!-- Estado / Cargando -->
+    <div id="status" class="hidden text-center py-4 font-semibold text-slate-600">
+      ⏳ Consultando WMS... Por favor espera.
+    </div>
+
+    <!-- Tabla de Resultados -->
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse border border-slate-200">
+        <thead>
+          <tr class="bg-slate-800 text-white text-sm">
+            <th class="p-3 border">TS</th>
+            <th class="p-3 border">IS (Inbound)</th>
+            <th class="p-3 border">HU (Tarima)</th>
+            <th class="p-3 border">MU (Caja)</th>
+            <th class="p-3 border">Código MELI</th>
+            <th class="p-3 border">Cant. Esperada</th>
+          </tr>
+        </thead>
+        <tbody id="tablaResultados" class="text-sm divide-y divide-slate-200">
+          <tr>
+            <td colspan="6" class="text-center p-6 text-slate-400">Ingresa un código arriba para ver el desglose.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    // REEMPLAZARÁS ESTA URL CUANDO TENGAMOS EL WEBHOOK DE N8N
+    const WEBHOOK_N8N_URL = 'https://TU_INSTANCIA_N8N/webhook/audit-siniestros';
+
+    async function consultarSiniestro() {
+      const tsCode = document.getElementById('tsInput').value.trim();
+      const status = document.getElementById('status');
+      const tabla = document.getElementById('tablaResultados');
+
+      if (!tsCode) {
+        alert('Por favor ingresa un código de TS válido');
+        return;
+      }
+
+      status.classList.remove('hidden');
+      tabla.innerHTML = '';
+
+      try {
+        const response = await fetch(WEBHOOK_N8N_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ts_code: tsCode })
+        });
+
+        const data = await response.json();
+        status.classList.add('hidden');
+
+        if (!data || data.length === 0) {
+          tabla.innerHTML = '<tr><td colspan="6" class="text-center p-6 text-red-500">No se encontraron datos para este Transfer.</td></tr>';
+          return;
+        }
+
+        data.forEach(item => {
+          tabla.innerHTML += `
+            <tr class="hover:bg-slate-50">
+              <td class="p-3 border font-semibold">${item.TS || '-'}</td>
+              <td class="p-3 border">${item.IS || '-'}</td>
+              <td class="p-3 border">${item.HU || '-'}</td>
+              <td class="p-3 border">${item.MU || '-'}</td>
+              <td class="p-3 border font-mono text-blue-600">${item.Codigo_Meli || '-'}</td>
+              <td class="p-3 border font-bold">${item.Cantidad || '1'}</td>
+            </tr>
+          `;
+        });
+
+      } catch (error) {
+        status.classList.add('hidden');
+        tabla.innerHTML = '<tr><td colspan="6" class="text-center p-6 text-red-500">Error al conectar con n8n / WMS.</td></tr>';
+      }
+    }
+  </script>
+</body>
+</html>

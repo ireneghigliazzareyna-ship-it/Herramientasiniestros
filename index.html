@@ -3,108 +3,197 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Auditoría de Siniestros - Transfers</title>
+  <title>Auditoría de Siniestros</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Estilos extra para asegurar que el texto sea fácil de seleccionar */
+    .copy-block { white-space: pre-wrap; font-family: monospace; user-select: all; }
+  </style>
 </head>
-<body class="bg-slate-100 min-h-screen p-6 font-sans">
-  <div class="max-w-6xl mx-auto bg-white p-6 rounded-xl shadow-md">
-    
-    <!-- Encabezado -->
-    <div class="border-b pb-4 mb-6 flex justify-between items-center">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-800">🛠️ Auditoría de Siniestros 100%</h1>
-        <p class="text-slate-500 text-sm">Ingresa el código del Transfer Shipment (TS) para desglosar la carga.</p>
+<body class="bg-gray-100 min-h-screen text-gray-900 font-sans">
+
+  <!-- Navegación -->
+  <nav class="bg-black text-white p-4 shadow-md">
+    <div class="max-w-6xl mx-auto flex justify-between items-center">
+      <h1 class="text-xl font-bold tracking-wider">AUDITORÍA WMS</h1>
+      <div class="flex gap-4">
+        <button onclick="switchTab('scanner')" id="tab-scanner" class="px-4 py-2 bg-white text-black font-semibold rounded-md transition border-2 border-white">
+          Escáner y Desglose
+        </button>
+        <button onclick="switchTab('templates')" id="tab-templates" class="px-4 py-2 text-white font-semibold rounded-md transition border-2 border-transparent hover:border-gray-500">
+          Templates
+        </button>
       </div>
-      <span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full">Operación Inbound</span>
+    </div>
+  </nav>
+
+  <main class="max-w-6xl mx-auto p-6 mt-6">
+    
+    <!-- PESTAÑA 1: ESCÁNER -->
+    <div id="view-scanner" class="bg-white p-8 rounded-lg shadow-sm border border-gray-200 block">
+      <div class="mb-6">
+        <h2 class="text-2xl font-bold mb-2">Desglose de Unidad (HU/MU)</h2>
+        <p class="text-gray-500 text-sm">Escanea un código MU. El sistema agrupará todos los MU asociados a su misma tarima (HU) y expandirá las cantidades.</p>
+      </div>
+
+      <div class="flex gap-4 mb-8">
+        <input type="text" id="scanInput" placeholder="Escanea o escribe el MU (Ej. MU-TT-RC-...)" 
+          class="flex-1 border-2 border-gray-300 p-3 rounded-md focus:outline-none focus:border-black font-mono text-lg">
+        <button onclick="buscarDatos()" class="bg-black hover:bg-gray-800 text-white font-bold px-8 py-3 rounded-md transition">
+          Buscar
+        </button>
+      </div>
+
+      <div id="statusMsg" class="hidden text-center py-4 font-semibold text-gray-600 mb-4 bg-gray-50 rounded"></div>
+
+      <!-- Contenedor de Resultados (Columnas) -->
+      <div id="resultados" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Los datos se inyectarán aquí -->
+      </div>
     </div>
 
-    <!-- Formulario de Búsqueda -->
-    <div class="flex gap-4 mb-6">
-      <input type="text" id="tsInput" placeholder="Ej. MXYU01 o 24261346..." 
-        class="flex-1 border border-slate-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400">
-      <button onclick="consultarSiniestro()" id="btnBuscar"
-        class="bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold px-6 py-3 rounded-lg transition">
-        Buscar Carga
-      </button>
+    <!-- PESTAÑA 2: TEMPLATES -->
+    <div id="view-templates" class="bg-white p-8 rounded-lg shadow-sm border border-gray-200 hidden">
+      <h2 class="text-2xl font-bold mb-6">Templates de Siniestros</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- Template 1 -->
+        <div class="flex flex-col">
+          <label class="font-bold mb-2 border-b border-gray-300 pb-2">HU por TS</label>
+          <textarea class="w-full h-64 p-3 border border-gray-300 rounded focus:outline-none focus:border-black font-mono text-sm resize-none" placeholder="Pega aquí los datos..."></textarea>
+          <button class="mt-2 bg-gray-200 hover:bg-gray-300 text-black py-2 rounded text-sm font-semibold transition" onclick="copiarTexto(this)">Copiar Template</button>
+        </div>
+
+        <!-- Template 2 -->
+        <div class="flex flex-col">
+          <label class="font-bold mb-2 border-b border-gray-300 pb-2">MU por TS</label>
+          <textarea class="w-full h-64 p-3 border border-gray-300 rounded focus:outline-none focus:border-black font-mono text-sm resize-none" placeholder="Pega aquí los datos..."></textarea>
+          <button class="mt-2 bg-gray-200 hover:bg-gray-300 text-black py-2 rounded text-sm font-semibold transition" onclick="copiarTexto(this)">Copiar Template</button>
+        </div>
+
+        <!-- Template 3 -->
+        <div class="flex flex-col">
+          <label class="font-bold mb-2 border-b border-gray-300 pb-2">MU y MELI</label>
+          <textarea class="w-full h-64 p-3 border border-gray-300 rounded focus:outline-none focus:border-black font-mono text-sm resize-none" placeholder="Pega aquí los datos..."></textarea>
+          <button class="mt-2 bg-gray-200 hover:bg-gray-300 text-black py-2 rounded text-sm font-semibold transition" onclick="copiarTexto(this)">Copiar Template</button>
+        </div>
+
+      </div>
     </div>
 
-    <!-- Estado / Cargando -->
-    <div id="status" class="hidden text-center py-4 font-semibold text-slate-600">
-      ⏳ Consultando WMS... Por favor espera.
-    </div>
-
-    <!-- Tabla de Resultados -->
-    <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse border border-slate-200">
-        <thead>
-          <tr class="bg-slate-800 text-white text-sm">
-            <th class="p-3 border">TS</th>
-            <th class="p-3 border">IS (Inbound)</th>
-            <th class="p-3 border">HU (Tarima)</th>
-            <th class="p-3 border">MU (Caja)</th>
-            <th class="p-3 border">Código MELI</th>
-            <th class="p-3 border">Cant. Esperada</th>
-          </tr>
-        </thead>
-        <tbody id="tablaResultados" class="text-sm divide-y divide-slate-200">
-          <tr>
-            <td colspan="6" class="text-center p-6 text-slate-400">Ingresa un código arriba para ver el desglose.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-  </div>
+  </main>
 
   <script>
-    // REEMPLAZARÁS ESTA URL CUANDO TENGAMOS EL WEBHOOK DE N8N
-    const WEBHOOK_N8N_URL = 'https://TU_INSTANCIA_N8N/webhook/audit-siniestros';
+    let rawData = [];
 
-    async function consultarSiniestro() {
-      const tsCode = document.getElementById('tsInput').value.trim();
-      const status = document.getElementById('status');
-      const tabla = document.getElementById('tablaResultados');
+    // Cargar datos al iniciar la página
+    window.onload = async () => {
+      try {
+        // Añadimos un timestamp para evitar que el navegador guarde en caché una versión vieja del data.json
+        const response = await fetch('./data.json?t=' + new Date().getTime());
+        rawData = await response.json();
+      } catch (error) {
+        console.error("Error cargando data.json. Asegúrate de que el archivo exista en GitHub.", error);
+      }
+    };
 
-      if (!tsCode) {
-        alert('Por favor ingresa un código de TS válido');
+    function switchTab(tab) {
+      document.getElementById('view-scanner').classList.toggle('hidden', tab !== 'scanner');
+      document.getElementById('view-templates').classList.toggle('hidden', tab !== 'templates');
+      
+      const tabScanner = document.getElementById('tab-scanner');
+      const tabTemplates = document.getElementById('tab-templates');
+
+      if(tab === 'scanner') {
+        tabScanner.className = "px-4 py-2 bg-white text-black font-semibold rounded-md transition border-2 border-white";
+        tabTemplates.className = "px-4 py-2 text-white font-semibold rounded-md transition border-2 border-transparent hover:border-gray-500";
+      } else {
+        tabTemplates.className = "px-4 py-2 bg-white text-black font-semibold rounded-md transition border-2 border-white";
+        tabScanner.className = "px-4 py-2 text-white font-semibold rounded-md transition border-2 border-transparent hover:border-gray-500";
+      }
+    }
+
+    function buscarDatos() {
+      const inputVal = document.getElementById('scanInput').value.trim().toUpperCase();
+      const statusMsg = document.getElementById('statusMsg');
+      const contenedor = document.getElementById('resultados');
+      
+      contenedor.innerHTML = '';
+      statusMsg.classList.add('hidden');
+
+      if (!inputVal) return;
+
+      if (rawData.length === 0) {
+        statusMsg.textContent = "Error: La base de datos está vacía o no se pudo cargar el data.json.";
+        statusMsg.classList.remove('hidden');
         return;
       }
 
-      status.classList.remove('hidden');
-      tabla.innerHTML = '';
+      // 1. Buscar si el input coincide con algún MU
+      const targetRecord = rawData.find(row => (row.MU && row.MU.toUpperCase() === inputVal) || (row.HU_ID && row.HU_ID.toUpperCase() === inputVal));
 
-      try {
-        const response = await fetch(WEBHOOK_N8N_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ts_code: tsCode })
-        });
-
-        const data = await response.json();
-        status.classList.add('hidden');
-
-        if (!data || data.length === 0) {
-          tabla.innerHTML = '<tr><td colspan="6" class="text-center p-6 text-red-500">No se encontraron datos para este Transfer.</td></tr>';
-          return;
-        }
-
-        data.forEach(item => {
-          tabla.innerHTML += `
-            <tr class="hover:bg-slate-50">
-              <td class="p-3 border font-semibold">${item.TS || '-'}</td>
-              <td class="p-3 border">${item.IS || '-'}</td>
-              <td class="p-3 border">${item.HU || '-'}</td>
-              <td class="p-3 border">${item.MU || '-'}</td>
-              <td class="p-3 border font-mono text-blue-600">${item.Codigo_Meli || '-'}</td>
-              <td class="p-3 border font-bold">${item.Cantidad || '1'}</td>
-            </tr>
-          `;
-        });
-
-      } catch (error) {
-        status.classList.add('hidden');
-        tabla.innerHTML = '<tr><td colspan="6" class="text-center p-6 text-red-500">Error al conectar con n8n / WMS.</td></tr>';
+      if (!targetRecord) {
+        statusMsg.textContent = "No se encontraron registros para este código.";
+        statusMsg.classList.remove('hidden');
+        return;
       }
+
+      const targetHU = targetRecord.HU_ID;
+
+      // 2. Filtrar toda la carga que pertenece a ese HU
+      const cargaCompleta = rawData.filter(row => row.HU_ID === targetHU);
+
+      // 3. Agrupar por MU
+      const agrupadoPorMU = {};
+      cargaCompleta.forEach(row => {
+        const mu = row.MU || 'SIN-MU';
+        if (!agrupadoPorMU[mu]) {
+          agrupadoPorMU[mu] = [];
+        }
+        
+        // Multiplicar MELIs por la cantidad
+        const cantidad = parseInt(row.CANTIDAD) || 1;
+        for (let i = 0; i < cantidad; i++) {
+          agrupadoPorMU[mu].push(row.MELI);
+        }
+      });
+
+      // 4. Renderizar las columnas
+      for (const [mu, melis] of Object.entries(agrupadoPorMU)) {
+        const muBlock = document.createElement('div');
+        muBlock.className = "bg-gray-50 border border-gray-300 rounded-md p-4 flex flex-col";
+        
+        // Convertir el array de melis en una lista separada por saltos de línea
+        const listaMelis = melis.join('\n');
+
+        muBlock.innerHTML = `
+          <div class="flex justify-between items-center border-b border-gray-300 pb-2 mb-3">
+            <span class="font-bold text-sm">MU</span>
+            <span class="text-xs bg-black text-white px-2 py-1 rounded">HU: ${targetHU}</span>
+          </div>
+          <div class="copy-block font-bold text-black mb-4 bg-gray-200 p-2 rounded">${mu}</div>
+          <span class="font-bold text-sm mb-1">MELIs (${melis.length})</span>
+          <div class="copy-block flex-1 bg-white border border-gray-200 p-2 rounded text-sm text-gray-700 h-48 overflow-y-auto">${listaMelis}</div>
+        `;
+        contenedor.appendChild(muBlock);
+      }
+    }
+
+    function copiarTexto(btn) {
+      const textarea = btn.previousElementSibling;
+      textarea.select();
+      document.execCommand('copy');
+      
+      const originalText = btn.innerText;
+      btn.innerText = "¡Copiado!";
+      btn.classList.replace('bg-gray-200', 'bg-black');
+      btn.classList.replace('text-black', 'text-white');
+      
+      setTimeout(() => {
+        btn.innerText = originalText;
+        btn.classList.replace('bg-black', 'bg-gray-200');
+        btn.classList.replace('text-white', 'text-black');
+      }, 2000);
     }
   </script>
 </body>

@@ -88,12 +88,17 @@
 
     // Cargar datos al iniciar la página
     window.onload = async () => {
+      const statusMsg = document.getElementById('statusMsg');
       try {
-        // Añadimos un timestamp para evitar que el navegador guarde en caché una versión vieja del data.json
         const response = await fetch('./data.json?t=' + new Date().getTime());
-        rawData = await response.json();
+        const n8nData = await response.json();
+        
+        // CORRECCIÓN CLAVE: Desempaquetar el formato de n8n (sacar los datos de la propiedad "json")
+        rawData = n8nData.map(item => item.json ? item.json : item);
+        
       } catch (error) {
-        console.error("Error cargando data.json. Asegúrate de que el archivo exista en GitHub.", error);
+        statusMsg.textContent = "⚠️ Error cargando data.json. Asegúrate de que el flujo de n8n ya se ejecutó con éxito.";
+        statusMsg.classList.remove('hidden');
       }
     };
 
@@ -124,21 +129,26 @@
       if (!inputVal) return;
 
       if (rawData.length === 0) {
-        statusMsg.textContent = "Error: La base de datos está vacía o no se pudo cargar el data.json.";
+        statusMsg.textContent = "La base de datos está vacía o aún no se carga. Intenta en unos segundos.";
         statusMsg.classList.remove('hidden');
         return;
       }
 
-      // 1. Buscar si el input coincide con algún MU
-      const targetRecord = rawData.find(row => (row.MU && row.MU.toUpperCase() === inputVal) || (row.HU_ID && row.HU_ID.toUpperCase() === inputVal));
+      // 1. Buscar si el input coincide con algún MU o HU
+      const targetRecord = rawData.find(row => 
+        (row.MU && String(row.MU).toUpperCase() === inputVal) || 
+        (row.HU_ID && String(row.HU_ID).toUpperCase() === inputVal)
+      );
 
       if (!targetRecord) {
-        statusMsg.textContent = "No se encontraron registros para este código.";
+        statusMsg.textContent = "No se encontraron registros para este código en los últimos 5 días.";
         statusMsg.classList.remove('hidden');
         return;
       }
 
       const targetHU = targetRecord.HU_ID;
+      const targetIS = targetRecord.IS_ID || 'N/A';
+      const targetLlave = targetRecord.LLAVE_MAESTRA || 'N/A';
 
       // 2. Filtrar toda la carga que pertenece a ese HU
       const cargaCompleta = rawData.filter(row => row.HU_ID === targetHU);
@@ -151,7 +161,7 @@
           agrupadoPorMU[mu] = [];
         }
         
-        // Multiplicar MELIs por la cantidad
+        // Multiplicar MELIs por la cantidad (Expansión para copy-paste)
         const cantidad = parseInt(row.CANTIDAD) || 1;
         for (let i = 0; i < cantidad; i++) {
           agrupadoPorMU[mu].push(row.MELI);
@@ -161,19 +171,31 @@
       // 4. Renderizar las columnas
       for (const [mu, melis] of Object.entries(agrupadoPorMU)) {
         const muBlock = document.createElement('div');
-        muBlock.className = "bg-gray-50 border border-gray-300 rounded-md p-4 flex flex-col";
+        muBlock.className = "bg-gray-50 border border-gray-300 rounded-md p-4 flex flex-col shadow-sm";
         
-        // Convertir el array de melis en una lista separada por saltos de línea
         const listaMelis = melis.join('\n');
 
         muBlock.innerHTML = `
-          <div class="flex justify-between items-center border-b border-gray-300 pb-2 mb-3">
-            <span class="font-bold text-sm">MU</span>
-            <span class="text-xs bg-black text-white px-2 py-1 rounded">HU: ${targetHU}</span>
+          <div class="flex flex-col border-b border-gray-300 pb-2 mb-3 gap-1 text-xs">
+            <div class="flex justify-between">
+              <span class="font-bold text-gray-500">TS (Llave):</span>
+              <span class="font-mono">${targetLlave}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="font-bold text-gray-500">IS_ID:</span>
+              <span class="font-mono">${targetIS}</span>
+            </div>
+            <div class="flex justify-between items-center mt-1">
+              <span class="font-bold text-gray-500">HU_ID:</span>
+              <span class="bg-black text-white px-2 py-0.5 rounded font-mono">${targetHU}</span>
+            </div>
           </div>
-          <div class="copy-block font-bold text-black mb-4 bg-gray-200 p-2 rounded">${mu}</div>
-          <span class="font-bold text-sm mb-1">MELIs (${melis.length})</span>
-          <div class="copy-block flex-1 bg-white border border-gray-200 p-2 rounded text-sm text-gray-700 h-48 overflow-y-auto">${listaMelis}</div>
+          
+          <span class="font-bold text-sm mb-1 text-black">MU</span>
+          <div class="copy-block font-bold text-black mb-4 bg-gray-200 p-2 rounded cursor-pointer hover:bg-gray-300 transition" title="Haz clic para seleccionar todo">${mu}</div>
+          
+          <span class="font-bold text-sm mb-1 text-black">MELIs expandidos (Total: ${melis.length})</span>
+          <div class="copy-block flex-1 bg-white border border-gray-200 p-2 rounded text-sm text-gray-700 h-48 overflow-y-auto cursor-pointer hover:border-gray-400 transition" title="Haz clic para seleccionar todo">${listaMelis}</div>
         `;
         contenedor.appendChild(muBlock);
       }
